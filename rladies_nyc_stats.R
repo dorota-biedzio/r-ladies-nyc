@@ -56,4 +56,8 @@ plot <- ggplot() +
        subtitle = "Points Represent Meetup Events \n",
        caption = "\n Data from Meetup.com for the last three years as of May 5th, 2024.")
 
-ggsave(filename = file.path(file.dir,"rladies_nyc_membership.png"), plot = plot)
+ggsave(filename = file.path(file.dir,"rladies_nyc_membership.png"), 
+       plot = plot,
+       height = 4,
+       width = 7.5,
+       units = "in")
