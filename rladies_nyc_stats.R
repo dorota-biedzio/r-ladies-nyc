@@ -36,8 +36,8 @@ dat.all <- left_join(dat.members,
 plot <- ggplot() +
   geom_line(data = dat.all,
             mapping = aes(x = date, y = csum)) +
-  scale_x_date(date_breaks = "4 months", 
-               date_labels = "%Y \n %b  ") +
+  scale_x_date(date_breaks = "6 months", 
+               date_labels = "%b-%y") +
   geom_point(data = filter(dat.all, !is.na(id)),
              mapping = aes(x = date, y = csum)) +
   theme_classic() +
@@ -51,6 +51,8 @@ plot <- ggplot() +
                         paste("Total events:", tot.events),
                       sep = "\n"),
        caption = "\n Data pulled from Meetup.com using the `meetupr` R package. \n Points represent individual events.")
+
+plot
 
 ggsave(filename = file.path(file.dir,"rladies_nyc_membership.png"), 
        plot = plot,
