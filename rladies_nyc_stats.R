@@ -1,40 +1,34 @@
 library(meetupr)
 library(tidyverse)
 
+# getting location of this R script
+file.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+
 # getting meetup events data using meetupr package
-urlname    <- c("rladies-newyork")
-events     <- get_events(urlname)
-dat.events <- dplyr::bind_rows(events)
+urlname <- c("rladies-newyork")
+events  <- get_events(urlname)
+members <- get_members(urlname)
 
-# data on meetup joins downloaded manually from meetup.com stats page
-file.dir    <- dirname(rstudioapi::getActiveDocumentContext()$path)
-dat.joins   <- read.csv(file = file.path(file.dir,"R-Ladies New York Group Joins.csv"))
-total.joins <- sum(dat.joins$value)
-
-# cleaning "joins" data
-dat.joins <- dat.joins %>%
-  
-  # adding value for starting membership numbers (current membership minus total in the "joins" data)
-  # adding event dates that are missing from "joins" data and 
-  # adding dates for months that had no new joins and are therefore missing from "joins" data
-  add_row(date = "2021-05-01", value = 3155-total.joins) %>% 
-  add_row(date = "2024-02-29", value = 0) %>% 
-  add_row(date = "2024-03-18", value = 0) %>% 
-  add_row(date = "2024-03-30", value = 0) %>% 
-  add_row(date = "2024-04-01", value = 0) %>% 
-  add_row(date = "2024-05-05", value = 0) %>% 
-  
+# cleaning "members" data
+dat.members <- members %>% 
+  mutate(date = lubridate::date(created)) %>% 
+  group_by(date) %>% 
+  mutate(n = n()) %>% 
+  ungroup() %>% 
+  distinct(date,n) %>% 
   arrange(date) %>% 
-  rename(date_char = date) %>% 
-  mutate(date = lubridate::ymd(date_char),
-         csum = cumsum(value)) 
+  mutate(csum = cumsum(n))
 
 # cleaning "events" data
-dat.events <- dat.events %>% 
+dat.events <- dplyr::bind_rows(events) %>% 
   mutate(date = lubridate::date(time))
 
-# merging "events" onto "joins" data
-dat.all <- left_join(dat.joins,
+# getting total events and members
+tot.members <- max(dat.members$csum)
+tot.events <- n_distinct(dat.events$id)
+
+# merging "events" onto "members" data
+dat.all <- left_join(dat.members,
                      dat.events,
                      by = join_by(date))
 
@@ -42,7 +36,7 @@ dat.all <- left_join(dat.joins,
 plot <- ggplot() +
   geom_line(data = dat.all,
             mapping = aes(x = date, y = csum)) +
-  scale_x_date(date_breaks = "2 months", 
+  scale_x_date(date_breaks = "4 months", 
                date_labels = "%Y \n %b  ") +
   geom_point(data = filter(dat.all, !is.na(id)),
              mapping = aes(x = date, y = csum)) +
@@ -52,9 +46,11 @@ plot <- ggplot() +
         axis.title = element_blank(),
         axis.text = element_text(color = "black"),
         plot.caption = element_text(hjust = 0)) +
-  labs(title = "R-Ladies NYC Meetup Membership Growth Over Time",
-       subtitle = "Points Represent Meetup Events \n",
-       caption = "\n Data from Meetup.com for the last three years as of May 5th, 2024.")
+  labs(title = "R-Ladies NYC Meetup Membership Over Time",
+       subtitle = paste(paste("Total members:", tot.members),
+                        paste("Total events:", tot.events),
+                      sep = "\n"),
+       caption = "\n Data pulled from Meetup.com using the `meetupr` R package. \n Points represent individual events.")
 
 ggsave(filename = file.path(file.dir,"rladies_nyc_membership.png"), 
        plot = plot,
